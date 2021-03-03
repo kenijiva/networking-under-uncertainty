@@ -78,22 +78,16 @@ def add_edges(run, beta, gamma, topology, n_paths, demand, link_lease_cost, tran
         #print(r, len(new_tops))
         topologies = new_tops
 
-from time import time
-for run in range(3,4):
-    print(list(range(2,4)))
-    t1 = time()
-    
+for run in range(1):
     weibull_scale = 0.001
     weibull_shape = 0.8
     
     topology_path = 'topology/B4'
     topology = pd_to_nx(read_topology(topology_path, weibull_scale, weibull_shape))
-    beta = 0.999
+    beta = 0.9999
     gamma = 1.0
     cutoff = 0.0000001
     demand = read_demand(topology_path, topology, 0)
-    demand = {(i,j): (run-1)*demand[(i,j)] for i,j in demand}
-    print(demand)
     n_paths = 4
     
     
@@ -116,9 +110,3 @@ for run in range(3,4):
     ################
     
     add_edges(run, beta, gamma, topology, n_paths, demand, link_lease_cost, transceiver_cost, n_wavelengths_fiber, wavelength_capacity, possible_edges, weibull_scale, weibull_shape)
-
-
-    t2 = time()
-    with open(f'{run}.txt', 'a+') as my_file:
-        my_file.write(f'TIME = {t2-t1}')
-        
