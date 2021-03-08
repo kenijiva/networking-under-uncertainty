@@ -28,4 +28,4 @@ def write_topology(dataset, top_dir, cols = None):
         top = dataset['to_node', 'from_node', 'capacity', 'prob_failure']
     else:
         top = dataset[cols]
-    top.to_csv(os.path.join(top_dir, 'topology.txt'), index = False)
+    top.to_csv(os.path.join(top_dir, 'topology.txt'), index = False, sep=' ')

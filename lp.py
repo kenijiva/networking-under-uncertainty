@@ -10,6 +10,7 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     flows = [(i,j) for i in nodes for j in nodes if i != j]
     n_paths = len(paths)
     capacity = nx.get_edge_attributes(topology, 'capacity')
+    num_fiberhuts = nx.get_edge_attributes(topology, 'num_fiberhuts')
     flat_scenarios = set([frozenset(k) for i,j in scenarios for k,l in j])
     flat_scenarios = [sorted(list(k)) for k in flat_scenarios]
     scenarios = sorted(scenarios)
@@ -61,7 +62,7 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     ##   for each edge:                        ## capacity[e] on both sides
     ##   c + c_up <= c_max + c_max_update      ##
     #############################################
-    max_capacity_constraints = [capacity[e] + capacity_update[e] <= capacity[e] +fiberhut_update[e] * fiberhut_capacity for e in edges]
+    max_capacity_constraints = [capacity[e] + capacity_update[e] <= num_fiberhuts[e]*fiberhut_capacity +fiberhut_update[e] * fiberhut_capacity for e in edges]
 
     objective = lpSum([capacity_update[e] * gbps_cost + fiberhut_update[e] * fiberhut_cost for e in edges])
 
@@ -80,7 +81,11 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     prob += objective
 
     solver = GUROBI(msg=0)
+    from time import time
+    st = time()
     prob.solve(solver)
+    #print('SOLVING TIME', time()-st)
+    #prob.solve(PULP_CBC_CMD(msg=0))
     
 
     if prob.status == LpStatusOptimal:
