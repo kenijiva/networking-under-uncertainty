@@ -50,6 +50,8 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
     pbar = tqdm(desc='Outer Loop', file=sys.stdout, dynamic_ncols=True)
     qbar = tqdm(desc='Inner Loop', file=sys.stdout, dynamic_ncols=True)
     pbar.update(1)
+    with open(f'{run}.txt', 'a') as f:
+        f.write(f'{ds} {cheapest} 0 {[]}\n')
     for r in range(1,len(possible_add)):
         new_tops = set([frozenset(es+[add]) for es in topologies for add in possible_add if add not in es])
         new_tops = [sorted(list(es)) for es in new_tops if r*fiberhut_cost < cheapest]
@@ -76,6 +78,9 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
                     G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0)
                 #total_cost = update_capacity(beta, gamma, G, cutoff, demand, edge_cost) + cost
                 total_cost = update_capacity(beta, gamma, G, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=es, cheapest=cheapest)
+                with open(f'{run}.txt', 'a') as f:
+                    f.write(f'{ds} {total_cost} {r} {es}\n')
+
                 my_tops.append((es, total_cost))
 
                 if total_cost < cheapest:
