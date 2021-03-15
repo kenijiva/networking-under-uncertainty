@@ -81,24 +81,9 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     prob += objective
 
     solver = GUROBI(msg=0)
-    from time import time
-    st = time()
     prob.solve(solver)
-    #print('SOLVING TIME', time()-st)
-    #prob.solve(PULP_CBC_CMD(msg=0))
-    
 
     if prob.status == LpStatusOptimal:
-        #print(LpStatus[prob.status])
-        #print([e for e in edges])
-        #print([value(c_update[e]) for e in edges])
-        #print(c_update.value())
-        #print([(managed[s].value()) for s in range(n_scenarios)])
-        #print(len([value(managed[s]) for s in range(n_scenarios)]))
-        #print(objective.value())
-        #print({k: capacity_update[k].value() for k in capacity_update})
-        #print({k: fiberhut_update[k].value() for k in fiberhut_update})
-        #print(objective.value())
         return objective.value()
     else:
         #print(LpStatus[prob.status])
