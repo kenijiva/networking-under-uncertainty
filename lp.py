@@ -84,7 +84,7 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     prob.solve(solver)
 
     if prob.status == LpStatusOptimal:
-        return objective.value()
+        return objective.value(), {k: capacity_update[k].value() for k in capacity_update}, {k: fiberhut_update[k].value() for k in fiberhut_update}
     else:
         #print(LpStatus[prob.status])
         return 999999999999999999999999999999

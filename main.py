@@ -8,131 +8,169 @@ from util import *
 from itertools import combinations
 
 import math
+import sys
 
 import pandas as pd
 import random
 
 from tqdm import tqdm
+from scipy.stats import uniform
 
-def update_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None):
+from argparser import *
 
+def upgrade_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None):
     paths = k_shortest_paths(topology, n_paths)
     scenarios = get_flow_scenarios(topology, paths) # TODO reuse scenarios, not everly flow changes i think
+    cost, capacity_update, fiberhut_update = find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=added_edges, cheapest=cheapest)
+    return cost, capacity_update, fiberhut_update
 
-    cost = find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=added_edges, cheapest=cheapest)
-    return cost
+def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timestep):
+    def update_bars(reset = False):
+        if reset: qbar.reset()
+        num_combs[r] = len(new_tops)
+        max_r = int(cheapest / fiberhut_cost)
+        qbar.total = num_combs[r]
+        pbar.total = sum(num_combs[:max_r+1])
+        pbar.set_postfix({'improvement:': round(no_adding_cost/cheapest,2), 'cheapest:': int(cheapest), 'timestep': timestep})
+        qbar.set_postfix({f'#edges per comb': r})
+        pbar.refresh()
+        qbar.refresh()
 
+    # Calculate the cost of not adding
+    cheapest, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost)
+    cheapest_capacity_update = capacity_update
+    cheapest_fiberhut_update = fiberhut_update
+    #print(fiberhut_update)
+    no_adding_cost = cheapest
+    cheapest_edges = []
 
-def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges):
-    # calculate the cost of not adding
-    no_adding_cost = update_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost)
-    cheapest = no_adding_cost
-    cheapest_es = []
+    # Write result
+    with open(f'{run}.txt', 'a') as f:
+        f.write(f'{timestep} {cheapest} {cheapest_edges}\n')
 
     # Find cheaper topology
     possible_add = possible_edges.keys()
 
-    index_f = lambda possible_add, es: 0 if len(es) == 0 else (possible_add.index(es[-1])+1)
-
-    topologies = [[]]
-
-    # at most max_r iterations
-    # per r at most combinations_r children
-    import sys
-    num_combs = [math.comb(len(possible_add), i) for i in range(0, len(possible_add)+1)]
-
+    # Show progress
     pbar = tqdm(desc='Outer Loop', file=sys.stdout, dynamic_ncols=True)
     qbar = tqdm(desc='Inner Loop', file=sys.stdout, dynamic_ncols=True)
+    num_combs = [math.comb(len(possible_add), i) for i in range(0, len(possible_add)+1)]
     pbar.update(1)
-    with open(f'{run}.txt', 'a') as f:
-        f.write(f'{ds} {cheapest} 0 {[]}\n')
+
+    topologies = [[]]
     for r in range(1,len(possible_add)):
+        # Can topology with more fiber huts even be cheaper
+        if r * fiberhut_cost >= cheapest:
+            break
+
         prev_cheapest = cheapest
+
+        # Create topologies to check out from topologies and possible_add
         new_tops = set([frozenset(es+[add]) for es in topologies for add in possible_add if add not in es])
-        new_tops = [sorted(list(es)) for es in new_tops if r*fiberhut_cost < cheapest]
+        # To list of lists again
+        new_tops = [sorted(list(es)) for es in new_tops]
 
-        new_tops = [sorted(list(es)) for es in new_tops if r*fiberhut_cost < prev_cheapest] # TODO
+        update_bars(reset = True)
 
-        num_combs[r] = len(new_tops)
-        qbar.reset()
-        max_r = int(cheapest/fiberhut_cost)
-        pbar.total = sum(num_combs[:max_r+1])
-        qbar.total = num_combs[r]
-
-        if cheapest != 0:
-            pbar.set_postfix({'improvement:': round(no_adding_cost/cheapest,2), 'cheapest:': int(cheapest)})
-            qbar.set_postfix({f'#edges per comb': r})
-        pbar.refresh()
-        qbar.refresh()
-
-        #for es, cost in tqdm(new_tops, file=sys.stdout, desc = 'Inner Loop', dynamic_ncols=True):
-        my_tops = []
+        # Tops that looked at
+        succ_tops = []
         for es in new_tops:
-            if r*fiberhut_cost < cheapest:
-                G = topology.copy()
-                for e in es:
-                    G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0)
-                #total_cost = update_capacity(beta, gamma, G, cutoff, demand, edge_cost) + cost
-                #total_cost = update_capacity(beta, gamma, G, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=es, cheapest=cheapest)
-                total_cost = update_capacity(beta, gamma, G, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=es, cheapest=None)
-                with open(f'{run}.txt', 'a') as f:
-                    f.write(f'{ds} {total_cost} {r} {es}\n')
+            # Create topology
+            G = topology.copy()
+            for e in es:
+                G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0)
 
-                my_tops.append((es, total_cost))
+            # Upgrade capacity of new topology and append to succesful
+            total_cost, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, G, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=es, cheapest=None)
+            succ_tops.append((es, total_cost))
+            # Write result
+            with open(f'{run}.txt', 'a') as f:
+                f.write(f'{timestep} {total_cost} {es}\n')
 
-                if total_cost < cheapest:
-                    cheapest = min(total_cost, cheapest)
-                    cheapest_es = es
+            # Update cheapest
+            if total_cost < cheapest:
+                cheapest = total_cost
+                cheapest_edges = es
+                cheapest_capacity_update = capacity_update
+                cheapest_fiberhut_update = fiberhut_update
 
-                    max_r = int(cheapest/fiberhut_cost)
-                    pbar.total = sum(num_combs[:max_r+1])
-                    pbar.set_postfix({'improvement:': round(no_adding_cost/cheapest,2), 'cheapest:': int(cheapest)})
+            # update bars
+            update_bars()
+            qbar.update(1)
+            pbar.update(1)
 
-                pbar.update(1)
-                qbar.update(1)
-            else:
-                pbar.total = pbar.total - 1
-                qbar.total = qbar.total - 1
-
-            pbar.refresh()
-            qbar.refresh()
-
-        #filter tops out for next iteration
-        new_tops = sorted(my_tops, key=lambda x: x[1])
+        # Search heuristic: sort by cost to explore promising one first # TODO more elaborate sorting once children are created
+        new_tops = sorted(succ_tops, key=lambda x: x[1])
+        # Space reduction heuristic: Look only at the ones that are cheaper then the cheapest from previous round TODO do cheaper than parent from previous round
         new_tops = [es for es,co  in new_tops if r*fiberhut_cost < cheapest and co < prev_cheapest] #TODO
+
         topologies = new_tops
 
+    return cheapest, cheapest_edges, cheapest_capacity_update, cheapest_fiberhut_update
+
+def iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timesteps, upgrade_f):
+    # copy values if using for other experiments
+    G = topology.copy()
+    possible_edges = {k: possible_edges[k] for k in possible_edges}
+
+    costs = []
+    total_cost = 0
+
+    for t in range(timesteps):
+
+        if upgrade_f == 'add_edges':
+            cost, edges, capacity_update, fiberhut_update = add_edges(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, t)
+        elif upgrade_f == 'upgrade_capacity':
+            cost, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost)
+            edges = []
+
+        costs.append(cost)
+
+        total_cost += sum(costs)
+
+        with open('my_results.txt', 'a') as f:
+            f.write(f'{upgrade_f} {total_cost} {costs}\n')
+        #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
+
+        # modify topology for next iteration
+        for e in edges:
+            G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0) #FIBERHUTS FFS TODO
+        for e in topology.edges:
+            G[e[0]][e[1]]['capacity'] += capacity_update[e]
+            G[e[0]][e[1]]['num_fiberhuts'] += fiberhut_update[e]
+        possible_edges = {k: possible_edges[k] for k in possible_edges if k not in edges}
+    #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
 
 runs = 1
 for run in range(runs):
-    weibull_scale = 0.001
-    weibull_shape = 0.8
-    
-    topology_path = 'topology/my_B4'
-    topology = pd_to_nx(read_topology(topology_path, weibull_scale, weibull_shape))
-    beta = 0.999
+    args = get_arguments()
+    write_config_file(args)
+
+    topology_path = 'topology/' + args.topology
+    topology = pd_to_nx(read_topology(topology_path, args.weibull_scale, args.weibull_shape))
+    G = topology.copy()
     gamma = 1.0
-    cutoff = 0.0000001
-    demand = read_demand(topology_path, topology, 0)
 
-    n_paths = 4
-    
-    wavelength_capacity = 400 #Gbps
-    n_wavelengths_fiber = 64 # number wavelengths per fiber
-    gbps_cost = 10 #$ per Gbps
-    transceiver_amortization_years = 3 # How long can I keep transceiver
-    fiber_cost = 3600 # $ per year
-    n_fibers_per_fiberhut = 200 # How many fibers are build together
+    demand = read_demand(topology_path, topology, args.demand_no)
+    demands = [{k: args.demand_scale*demand[k] for k in demand}]
+    for i in range(args.timesteps-1):
+        demands.append({k: uniform(loc = args.demand_min_growth, scale = args.demand_max_growth-args.demand_min_growth).rvs()*demands[-1][k] for k in demands[-1]})
 
-    fiberhut_capacity = n_fibers_per_fiberhut * n_wavelengths_fiber * wavelength_capacity
-    gbps_cost = gbps_cost / transceiver_amortization_years # Cost per Gbps per year
-    fiberhut_cost = n_fibers_per_fiberhut*fiber_cost # Cost per fiber hut
+    fiberhut_capacity = args.n_fibers_per_fiberhut * args.n_wavelengths_fiber * args.wavelength_capacity
+    gbps_cost = args.gbps_cost / args.transceiver_amortization_years
+    fiberhut_cost = args.n_fibers_per_fiberhut * args.fiber_cost
+
+    # YEARLY COST VS TOTAL COST vs WHATEVER COST
+    # iterative update
+    #    t = 0: topology, possible_edges, cost
+    #    t = 1: top[0], possible_edges[0], cost[0]+cost[1]
+    # joint update: t0 t1 t2 t3 ...
+    #    ...
+
     
+
     possible_edges = [(i,j) for i in topology.nodes for j in topology.nodes if i!=j and (i,j) not in topology.edges] # TODO: Select some of these
-    possible_edges = dict(zip(possible_edges, weibull(len(possible_edges), weibull_scale, weibull_shape)))
+    possible_edges = dict(zip(possible_edges, weibull(len(possible_edges), args.weibull_scale, args.weibull_shape)))
 
-    demand_scales = [0.5,.55, 0.6,0.7,1,2.0]
-
-    for ds in demand_scales:
-        demand_scaled = {k: demand[k]*ds for k in demand}
-        add_edges(beta, gamma, topology, n_paths, demand_scaled, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges)
+    #iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'upgrade_capacity')
+    #iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'add_edges')
