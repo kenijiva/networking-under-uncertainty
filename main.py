@@ -18,10 +18,10 @@ from scipy.stats import uniform
 
 from argparser import *
 
-def upgrade_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None):
+def upgrade_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None, max_capacity_update=None, max_fiberhut_update=None):
     paths = k_shortest_paths(topology, n_paths)
     scenarios = get_flow_scenarios(topology, paths) # TODO reuse scenarios, not everly flow changes i think
-    cost, capacity_update, fiberhut_update = find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=added_edges, cheapest=cheapest)
+    cost, capacity_update, fiberhut_update = find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=added_edges, cheapest=cheapest, max_capacity_update=max_capacity_update, max_fiberhut_update=max_fiberhut_update)
     return cost, capacity_update, fiberhut_update
 
 def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timestep):
@@ -108,6 +108,51 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
 
     return cheapest, cheapest_edges, cheapest_capacity_update, cheapest_fiberhut_update
 
+def backwards_iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timesteps, upgrade_f):
+    # solve for last
+    # solve for second last with added constraints of possible edges
+    # SOLVE for LAST
+    # NEW MAX for previous stage for capacities and fiberhuts
+    # Solve Previous stage with these max
+
+    # copy values if using for other experiments
+    G = topology.copy()
+    possible_edges = {k: possible_edges[k] for k in possible_edges}
+
+    costs = []
+    total_cost = 0
+
+    capacity_update = None
+    fiberhut_update = None
+    for t in reversed(range(timesteps)):
+
+        if upgrade_f == 'add_edges':
+            cost, edges, capacity_update, fiberhut_update = add_edges(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, t)
+        elif upgrade_f == 'upgrade_capacity':
+            cost, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost, max_capacity_update = capacity_update, max_fiberhut_update = fiberhut_update)
+            edges = []
+
+        costs.append(cost)
+
+        total_cost += cost
+
+        with open('my_results.txt', 'a') as f:
+            f.write(f'{upgrade_f} {total_cost} {costs}\n')
+        #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
+
+        # TODO SET MAXIMUM FOR FIBERHUTS UPDATE
+        # TODO SET MAXIMUM FOR CAPACITY UPDATE
+        # modify topology for next iteration
+        #for e in edges:
+        #    G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0) #FIBERHUTS FFS TODO
+        #for e in topology.edges:
+        #    G[e[0]][e[1]]['capacity'] += capacity_update[e]
+        #    G[e[0]][e[1]]['num_fiberhuts'] += fiberhut_update[e]
+
+        possible_edges = {e: possible_edges[e] for e in edges} #TODO THIS IS DONE BECAUSE ONLY USE THESE EDGES TO ADD
+    #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
+    print(total_cost)
+
 def iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timesteps, upgrade_f):
     # copy values if using for other experiments
     G = topology.copy()
@@ -139,6 +184,7 @@ def iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity
             G[e[0]][e[1]]['capacity'] += capacity_update[e]
             G[e[0]][e[1]]['num_fiberhuts'] += fiberhut_update[e]
         possible_edges = {k: possible_edges[k] for k in possible_edges if k not in edges}
+    print(total_cost)
     #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
 
 runs = 1
@@ -172,5 +218,7 @@ for run in range(runs):
     possible_edges = [(i,j) for i in topology.nodes for j in topology.nodes if i!=j and (i,j) not in topology.edges] # TODO: Select some of these
     possible_edges = dict(zip(possible_edges, weibull(len(possible_edges), args.weibull_scale, args.weibull_shape)))
 
-    #iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'upgrade_capacity')
-    #iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'add_edges')
+    iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'upgrade_capacity')
+    backwards_iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'upgrade_capacity')
+    iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'add_edges')
+    backwards_iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'add_edges')

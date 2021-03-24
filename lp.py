@@ -2,7 +2,7 @@ import networkx as nx
 from pulp import *
 #def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, link_lease_cost, transceiver_cost, n_wavelengths_fiber, wavelength_capacity, added_edges=[], cheapest=None):
 
-def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None):
+def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None, max_capacity_update=None, max_fiberhut_update=None):
 
     prob = LpProblem(name="Capacity_increase", sense=LpMinimize)
     edges = sorted(topology.edges)
@@ -29,6 +29,15 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     
     for e in added_edges:
         fiberhut_update[e].lowBound = 1
+
+    if max_fiberhut_update != None:
+        for k in max_fiberhut_update:
+            if k in edges:
+                fiberhut_update[k].upBound = max_fiberhut_update[k]
+    if max_capacity_update != None:
+        for k in max_capacity_update:
+            if k in edges:
+                capacity_update[k].upBound = max_capacity_update[k]
 
     #############################################
     ##    AVAILABILITY CONSTRAINTS             ##
