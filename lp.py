@@ -23,7 +23,6 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     # Scenarios that are successful
     managed = LpVariable.dicts("Managed scenario", range(n_scenarios), cat='Binary')
     allocations = LpVariable.dicts("Allocations", range(n_paths), lowBound=0, cat='Continous')
-    #c_update = LpVariable.dicts("capacity update", edges, lowBound=0, cat='Continous')
     capacity_update = LpVariable.dicts("capacity update", edges, lowBound=0, cat='Continous')
     fiberhut_update = LpVariable.dicts("fiberhut update", edges, lowBound=0, cat='Integer')
     
@@ -95,6 +94,5 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     if prob.status == LpStatusOptimal:
         return objective.value(), {k: capacity_update[k].value() for k in capacity_update}, {k: fiberhut_update[k].value() for k in fiberhut_update}
     else:
-        #print(LpStatus[prob.status])
         return 999999999999999999999999999999
         raise Exception('Not Implemented')
