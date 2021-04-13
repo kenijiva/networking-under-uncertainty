@@ -26,9 +26,6 @@ def find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_ca
     capacity_update = LpVariable.dicts("capacity update", edges, lowBound=0, cat='Continous')
     fiberduct_update = LpVariable.dicts("fiberduct update", edges, lowBound=0, cat='Integer')
     
-    for e in added_edges:
-        fiberduct_update[e].lowBound = 1
-
     if max_fiberduct_update != None:
         for k in max_fiberduct_update:
             if k in edges:
@@ -37,6 +34,14 @@ def find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_ca
         for k in max_capacity_update:
             if k in edges:
                 capacity_update[k].upBound = max_capacity_update[k]
+
+    for e in added_edges:
+        fiberduct_update[e].lowBound = 1
+
+    bidirectional_constraints = []
+    for e in added_edges:
+        constr = fiberduct_update[(e[1],e[0])] == fiberduct_update[e]
+        prob += constr
 
     #############################################
     ##    AVAILABILITY CONSTRAINTS             ##
@@ -66,13 +71,13 @@ def find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_ca
     capacity_constraints = [lpSum([allocations[ind] for ind in edge2path[e]]) <= capacity[e]+capacity_update[e] for e in edges]
 
     #############################################
-    ##   MAXIMUM CAPACITY UPDATE CONSTRAINTS   ## TODO
-    ##   for each edge:                        ## capacity[e] on both sides
+    ##   MAXIMUM CAPACITY UPDATE CONSTRAINTS   ##
+    ##   for each edge:                        ##
     ##   c + c_up <= c_max + c_max_update      ##
     #############################################
     max_capacity_constraints = [capacity[e] + capacity_update[e] <= num_fiberducts[e]*fiberduct_capacity +fiberduct_update[e] * fiberduct_capacity for e in edges]
 
-    objective = lpSum([capacity_update[e] * gbps_cost + fiberduct_update[e] * fiberduct_cost for e in edges])
+    objective = lpSum([capacity_update[e] * gbps_cost + fiberduct_update[e] * (fiberduct_cost/2) for e in edges])
 
     for a in availability_constraints:
         prob += a
