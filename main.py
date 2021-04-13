@@ -9,6 +9,7 @@ from itertools import combinations
 
 import math
 import sys
+import os
 
 import pandas as pd
 import random
@@ -18,17 +19,27 @@ from scipy.stats import uniform
 
 from argparser import *
 
-def upgrade_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None, max_capacity_update=None, max_fiberhut_update=None):
-    paths = k_shortest_paths(topology, n_paths)
-    scenarios = get_flow_scenarios(topology, paths) # TODO reuse scenarios, not everly flow changes i think
-    cost, capacity_update, fiberhut_update = find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=added_edges, cheapest=cheapest, max_capacity_update=max_capacity_update, max_fiberhut_update=max_fiberhut_update)
-    return cost, capacity_update, fiberhut_update
+def upgrade_capacity(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost, fiberduct_cost, path_selection,added_edges=[], cheapest=None, max_capacity_update=None, max_fiberduct_update=None):
+    if path_selection == 'k_shortest_paths':
+        paths = k_shortest_paths(topology, n_paths)
+    elif path_selection == 'shortest_paths':
+        paths = shortest_paths(topology, n_paths+2)
+        #alpha = 0.999
 
-def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timestep):
+    #print('get scenarios')
+    scenarios = get_flow_scenarios(topology, paths) # TODO reuse scenarios, not everly flow changes i think
+    #print(min([sum(sorted([p for _,p in scenarios[l][1]])) for l in range(len(scenarios))]))
+    #print('calc sol')
+    #print(alpha)
+    cost, capacity_update, fiberduct_update = find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_capacity, gbps_cost, fiberduct_cost, added_edges=added_edges, cheapest=cheapest, max_capacity_update=max_capacity_update, max_fiberduct_update=max_fiberduct_update)
+
+    return cost, capacity_update, fiberduct_update
+
+def add_edges(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, timestep, path_selection, experiment_path, doc_str):
     def update_bars(reset = False):
         if reset: qbar.reset()
         num_combs[r] = len(new_tops)
-        max_r = int(cheapest / fiberhut_cost)
+        max_r = int(cheapest / fiberduct_cost)
         qbar.total = num_combs[r]
         pbar.total = sum(num_combs[:max_r+1])
         pbar.set_postfix({'improvement:': round(no_adding_cost/cheapest,2), 'cheapest:': int(cheapest), 'timestep': timestep})
@@ -37,16 +48,16 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
         qbar.refresh()
 
     # Calculate the cost of not adding
-    cheapest, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost)
+    cheapest, capacity_update, fiberduct_update = upgrade_capacity(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost, fiberduct_cost, path_selection)
     cheapest_capacity_update = capacity_update
-    cheapest_fiberhut_update = fiberhut_update
-    #print(fiberhut_update)
+    cheapest_fiberduct_update = fiberduct_update
+    #print(fiberduct_update)
     no_adding_cost = cheapest
     cheapest_edges = []
 
     # Write result
-    with open(f'{run}.txt', 'a') as f:
-        f.write(f'{timestep} {cheapest} {cheapest_edges}\n')
+    with open(os.path.join(experiment_path, 'topology_evaluations.txt'), 'a') as f:
+        f.write(f'{doc_str} {cheapest} {cheapest_edges}\n')
 
     # Find cheaper topology
     possible_add = possible_edges.keys()
@@ -60,7 +71,7 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
     topologies = [[]]
     for r in range(1,len(possible_add)):
         # Can topology with more fiber huts even be cheaper
-        if r * fiberhut_cost >= cheapest:
+        if r * fiberduct_cost >= cheapest:
             break
 
         prev_cheapest = cheapest
@@ -78,21 +89,21 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
             # Create topology
             G = topology.copy()
             for e in es:
-                G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0)
+                G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberducts=0)
 
             # Upgrade capacity of new topology and append to succesful
-            total_cost, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, G, n_paths, demand, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=es, cheapest=None)
+            total_cost, capacity_update, fiberduct_update = upgrade_capacity(alpha, G, n_paths, demand, fiberduct_capacity, gbps_cost, fiberduct_cost, path_selection, added_edges=es, cheapest=None)
             succ_tops.append((es, total_cost))
             # Write result
-            with open(f'{run}.txt', 'a') as f:
-                f.write(f'{timestep} {total_cost} {es}\n')
+            with open(os.path.join(experiment_path, 'topology_evaluations.txt'), 'a') as f:
+                f.write(f'{doc_str} {total_cost} {es}\n')
 
             # Update cheapest
             if total_cost < cheapest:
                 cheapest = total_cost
                 cheapest_edges = es
                 cheapest_capacity_update = capacity_update
-                cheapest_fiberhut_update = fiberhut_update
+                cheapest_fiberduct_update = fiberduct_update
 
             # update bars
             update_bars()
@@ -102,19 +113,14 @@ def add_edges(beta, gamma, topology, n_paths, demand, fiberhut_capacity, gbps_co
         # Search heuristic: sort by cost to explore promising one first # TODO more elaborate sorting once children are created
         new_tops = sorted(succ_tops, key=lambda x: x[1])
         # Space reduction heuristic: Look only at the ones that are cheaper then the cheapest from previous round TODO do cheaper than parent from previous round
-        new_tops = [es for es,co  in new_tops if r*fiberhut_cost < cheapest and co < prev_cheapest] #TODO
+        new_tops = [es for es,co  in new_tops if r*fiberduct_cost < cheapest and co < prev_cheapest] #TODO
 
         topologies = new_tops
 
-    return cheapest, cheapest_edges, cheapest_capacity_update, cheapest_fiberhut_update
+    return cheapest, cheapest_edges, cheapest_capacity_update, cheapest_fiberduct_update
 
-def backwards_iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timesteps, upgrade_f):
-    # solve for last
-    # solve for second last with added constraints of possible edges
-    # SOLVE for LAST
-    # NEW MAX for previous stage for capacities and fiberhuts
-    # Solve Previous stage with these max
-
+def backwards_iterative_upgrade(alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, timesteps, upgrade_f, path_selection, experiment_path):
+    doc_str = f'backward {upgrade_f} {path_selection}'
     # copy values if using for other experiments
     G = topology.copy()
     possible_edges = {k: possible_edges[k] for k in possible_edges}
@@ -123,37 +129,26 @@ def backwards_iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhu
     total_cost = 0
 
     capacity_update = None
-    fiberhut_update = None
+    fiberduct_update = None
     for t in reversed(range(timesteps)):
 
         if upgrade_f == 'add_edges':
-            cost, edges, capacity_update, fiberhut_update = add_edges(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, t)
+            cost, edges, capacity_update, fiberduct_update = add_edges(alpha, G, n_paths, demands[t], fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, t, path_selection, experiment_path, f'{doc_str} {t}')
         elif upgrade_f == 'upgrade_capacity':
-            cost, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost, max_capacity_update = capacity_update, max_fiberhut_update = fiberhut_update)
+            cost, capacity_update, fiberduct_update = upgrade_capacity(alpha,  G, n_paths, demands[t], fiberduct_capacity, gbps_cost, fiberduct_cost, path_selection, max_capacity_update = capacity_update, max_fiberduct_update = fiberduct_update)
             edges = []
 
         costs.append(cost)
 
         total_cost += cost
 
-        with open('my_results.txt', 'a') as f:
-            f.write(f'{upgrade_f} {total_cost} {costs}\n')
-        #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
+        with open(os.path.join(experiment_path, 'cost_history.txt'), 'a') as f:
+            f.write(f'{doc_str} {t} {cost}\n')
 
-        # TODO SET MAXIMUM FOR FIBERHUTS UPDATE
-        # TODO SET MAXIMUM FOR CAPACITY UPDATE
-        # modify topology for next iteration
-        #for e in edges:
-        #    G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0) #FIBERHUTS FFS TODO
-        #for e in topology.edges:
-        #    G[e[0]][e[1]]['capacity'] += capacity_update[e]
-        #    G[e[0]][e[1]]['num_fiberhuts'] += fiberhut_update[e]
+        possible_edges = {e: possible_edges[e] for e in edges} # constraint to minimize 
 
-        possible_edges = {e: possible_edges[e] for e in edges} #TODO THIS IS DONE BECAUSE ONLY USE THESE EDGES TO ADD
-    #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
-    print(total_cost)
-
-def iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, timesteps, upgrade_f):
+def iterative_upgrade(alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, timesteps, upgrade_f, path_selection, experiment_path):
+    doc_str = f'forward {upgrade_f} {path_selection}'
     # copy values if using for other experiments
     G = topology.copy()
     possible_edges = {k: possible_edges[k] for k in possible_edges}
@@ -162,63 +157,78 @@ def iterative_upgrade(beta, gamma, topology, n_paths, demands, fiberhut_capacity
     total_cost = 0
 
     for t in range(timesteps):
-
         if upgrade_f == 'add_edges':
-            cost, edges, capacity_update, fiberhut_update = add_edges(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, t)
+            cost, edges, capacity_update, fiberduct_update = add_edges(alpha, G, n_paths, demands[t], fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, t, path_selection, experiment_path, f'{doc_str} {t}')
         elif upgrade_f == 'upgrade_capacity':
-            cost, capacity_update, fiberhut_update = upgrade_capacity(beta, gamma, G, n_paths, demands[t], fiberhut_capacity, gbps_cost, fiberhut_cost)
+            cost, capacity_update, fiberduct_update = upgrade_capacity(alpha, G, n_paths, demands[t], fiberduct_capacity, gbps_cost, fiberduct_cost, path_selection)
             edges = []
 
         costs.append(cost)
+        #print(cost)
 
         total_cost += sum(costs)
+        year_cost = sum(costs)
 
-        with open('my_results.txt', 'a') as f:
-            f.write(f'{upgrade_f} {total_cost} {costs}\n')
+        with open(os.path.join(experiment_path, 'cost_history.txt'), 'a') as f:
+            #f.write(f'forward {upgrade_f} {path_selection} {t} {year_cost}\n')
+            f.write(f'{doc_str} {t} {year_cost}\n')
         #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
 
         # modify topology for next iteration
         for e in edges:
-            G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberhuts=0) #FIBERHUTS FFS TODO
+            G.add_edge(*e, prob_failure=possible_edges[e], capacity=0, num_fiberducts=0) #FIBERHUTS FFS TODO
         for e in topology.edges:
             G[e[0]][e[1]]['capacity'] += capacity_update[e]
-            G[e[0]][e[1]]['num_fiberhuts'] += fiberhut_update[e]
+            G[e[0]][e[1]]['num_fiberducts'] += fiberduct_update[e]
         possible_edges = {k: possible_edges[k] for k in possible_edges if k not in edges}
-    print(total_cost)
+    #print(total_cost)
     #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
 
 runs = 1
 for run in range(runs):
+
+    # get parameters
     args = get_arguments()
-    write_config_file(args)
+    try:
+        os.mkdir(args.path)
+    except:
+        pass
+    write_config_file(args, path= os.path.join(args.path, 'config.cfg'))
 
     topology_path = 'topology/' + args.topology
-    topology = pd_to_nx(read_topology(topology_path, args.weibull_scale, args.weibull_shape))
-    G = topology.copy()
-    gamma = 1.0
+    topology_df = read_topology(topology_path,None,None)
+    topology = pd_to_nx(topology_df[topology_df.num_fiberducts > 0])
 
-    demand = read_demand(topology_path, topology, args.demand_no)
-    demands = [{k: args.demand_scale*demand[k] for k in demand}]
-    for i in range(args.timesteps-1):
-        demands.append({k: uniform(loc = args.demand_min_growth, scale = args.demand_max_growth-args.demand_min_growth).rvs()*demands[-1][k] for k in demands[-1]})
-
-    fiberhut_capacity = args.n_fibers_per_fiberhut * args.n_wavelengths_fiber * args.wavelength_capacity
-    gbps_cost = args.gbps_cost / args.transceiver_amortization_years
-    fiberhut_cost = args.n_fibers_per_fiberhut * args.fiber_cost
-
-    # YEARLY COST VS TOTAL COST vs WHATEVER COST
-    # iterative update
-    #    t = 0: topology, possible_edges, cost
-    #    t = 1: top[0], possible_edges[0], cost[0]+cost[1]
-    # joint update: t0 t1 t2 t3 ...
-    #    ...
-
+    possible_edges = topology_df[topology_df.num_fiberducts == 0]
+    possible_edges = dict(zip(list(zip(possible_edges.from_node, possible_edges.to_node)), possible_edges.prob_failure))
     
+    G = topology.copy()
 
-    possible_edges = [(i,j) for i in topology.nodes for j in topology.nodes if i!=j and (i,j) not in topology.edges] # TODO: Select some of these
-    possible_edges = dict(zip(possible_edges, weibull(len(possible_edges), args.weibull_scale, args.weibull_shape)))
+    demands = read_demand(topology_path, topology, args.demand_no)
+    demands = [{k: args.demand_scale*d[k] for k in d} for d in demands]
 
-    iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'upgrade_capacity')
-    backwards_iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'upgrade_capacity')
-    iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'add_edges')
-    backwards_iterative_upgrade(args.beta, gamma, topology, args.n_paths, demands, fiberhut_capacity, gbps_cost, fiberhut_cost, possible_edges, args.timesteps, upgrade_f = 'add_edges')
+    fiberduct_capacity = args.n_fibers_per_fiberduct * args.n_wavelengths_fiber * args.wavelength_capacity
+    gbps_cost = args.gbps_cost / args.transceiver_amortization_years
+    fiberduct_cost = args.n_fibers_per_fiberduct * args.fiber_cost
+
+    path_selection = 'k_shortest_paths' # TODO
+   
+    # perform experiments #TODO add everywhere args.path
+
+    iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'k_shortest_paths', args.path)
+    backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'k_shortest_paths', args.path)
+    iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths', args.path)
+    backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths', args.path)
+    iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths', args.path)
+    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths')
+    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'k_shortest_paths')
+    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths')
+    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths')
+    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'shortest_paths')
+    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths')
+    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'shortest_paths')
+    ##iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'shortest_paths')
+    ##iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths')
+    ##backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', path_selection)
+    ##iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', path_selection)
+    ##backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', path_selection)

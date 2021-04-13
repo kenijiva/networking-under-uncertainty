@@ -1,8 +1,8 @@
 import networkx as nx
 from pulp import *
-#def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, link_lease_cost, transceiver_cost, n_wavelengths_fiber, wavelength_capacity, added_edges=[], cheapest=None):
+#def find_capacity_update(alpha, topology, paths, demand, scenarios, link_lease_cost, transceiver_cost, n_wavelengths_fiber, wavelength_capacity, added_edges=[], cheapest=None):
 
-def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberhut_capacity, gbps_cost, fiberhut_cost, added_edges=[], cheapest=None, max_capacity_update=None, max_fiberhut_update=None):
+def find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_capacity, gbps_cost, fiberduct_cost, added_edges=[], cheapest=None, max_capacity_update=None, max_fiberduct_update=None):
 
     prob = LpProblem(name="Capacity_increase", sense=LpMinimize)
     edges = sorted(topology.edges)
@@ -10,7 +10,7 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     flows = [(i,j) for i in nodes for j in nodes if i != j]
     n_paths = len(paths)
     capacity = nx.get_edge_attributes(topology, 'capacity')
-    num_fiberhuts = nx.get_edge_attributes(topology, 'num_fiberhuts')
+    num_fiberducts = nx.get_edge_attributes(topology, 'num_fiberducts')
     flat_scenarios = set([frozenset(k) for i,j in scenarios for k,l in j])
     flat_scenarios = [sorted(list(k)) for k in flat_scenarios]
     scenarios = sorted(scenarios)
@@ -24,15 +24,15 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     managed = LpVariable.dicts("Managed scenario", range(n_scenarios), cat='Binary')
     allocations = LpVariable.dicts("Allocations", range(n_paths), lowBound=0, cat='Continous')
     capacity_update = LpVariable.dicts("capacity update", edges, lowBound=0, cat='Continous')
-    fiberhut_update = LpVariable.dicts("fiberhut update", edges, lowBound=0, cat='Integer')
+    fiberduct_update = LpVariable.dicts("fiberduct update", edges, lowBound=0, cat='Integer')
     
     for e in added_edges:
-        fiberhut_update[e].lowBound = 1
+        fiberduct_update[e].lowBound = 1
 
-    if max_fiberhut_update != None:
-        for k in max_fiberhut_update:
+    if max_fiberduct_update != None:
+        for k in max_fiberduct_update:
             if k in edges:
-                fiberhut_update[k].upBound = max_fiberhut_update[k]
+                fiberduct_update[k].upBound = max_fiberduct_update[k]
     if max_capacity_update != None:
         for k in max_capacity_update:
             if k in edges:
@@ -41,20 +41,20 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     #############################################
     ##    AVAILABILITY CONSTRAINTS             ##
     ##    for each flow                        ##
-    ##    sum(p_relevant_scenarios) >= beta    ##
+    ##    sum(p_relevant_scenarios) >= alpha    ##
     #############################################
     availability_constraints = []
     for flow, flow_scenarios in scenarios:
-        constr = lpSum([managed[flat_scenarios.index(sorted(s))]*p for s,p in flow_scenarios]) >= beta
+        constr = lpSum([managed[flat_scenarios.index(sorted(s))]*p for s,p in flow_scenarios]) >= alpha
         availability_constraints.append(constr)
 
     #############################################
     ##    SATISFACTION CONSTRAINTS             ##
     ##    for each flow: each rel. scenario    ##
-    ##    active_allocation >= gamma*demand    ##
+    ##    active_allocation >= demand    ##
     #############################################
     flow2path = dict(zip(flows, [[p for p in range(n_paths) if f[0]==paths[p][0][0] and f[1]==paths[p][-1][1]] for f in flows]))
-    satisfaction_constraints = [lpSum([allocations[path] for path in flow2path[f] if set(paths[path]).isdisjoint(set(s))]) >= managed[flat_scenarios.index(sorted(s))]*gamma*demand[f] for f,scens in scenarios for s,_ in scens]
+    satisfaction_constraints = [lpSum([allocations[path] for path in flow2path[f] if set(paths[path]).isdisjoint(set(s))]) >= managed[flat_scenarios.index(sorted(s))]*demand[f] for f,scens in scenarios for s,_ in scens]
 
     #############################################
     ##    CAPACITY CONSTRAINTS                 ##
@@ -70,9 +70,9 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     ##   for each edge:                        ## capacity[e] on both sides
     ##   c + c_up <= c_max + c_max_update      ##
     #############################################
-    max_capacity_constraints = [capacity[e] + capacity_update[e] <= num_fiberhuts[e]*fiberhut_capacity +fiberhut_update[e] * fiberhut_capacity for e in edges]
+    max_capacity_constraints = [capacity[e] + capacity_update[e] <= num_fiberducts[e]*fiberduct_capacity +fiberduct_update[e] * fiberduct_capacity for e in edges]
 
-    objective = lpSum([capacity_update[e] * gbps_cost + fiberhut_update[e] * fiberhut_cost for e in edges])
+    objective = lpSum([capacity_update[e] * gbps_cost + fiberduct_update[e] * fiberduct_cost for e in edges])
 
     for a in availability_constraints:
         prob += a
@@ -84,7 +84,7 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
         prob += a
 
     if cheapest != None:
-        prob += lpSum([capacity_update[e] * gbps_cost + fiberhut_update[e] * fiberhut_cost for e in edges]) <= cheapest
+        prob += lpSum([capacity_update[e] * gbps_cost + fiberduct_update[e] * fiberduct_cost for e in edges]) <= cheapest
 
     prob += objective
 
@@ -92,7 +92,8 @@ def find_capacity_update(beta, gamma, topology, paths, demand, scenarios, fiberh
     prob.solve(solver)
 
     if prob.status == LpStatusOptimal:
-        return objective.value(), {k: capacity_update[k].value() for k in capacity_update}, {k: fiberhut_update[k].value() for k in fiberhut_update}
+        return objective.value(), {k: capacity_update[k].value() for k in capacity_update}, {k: fiberduct_update[k].value() for k in fiberduct_update}
     else:
+        print('heeeeeeeeeeeee')
         return 999999999999999999999999999999
         raise Exception('Not Implemented')

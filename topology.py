@@ -24,8 +24,7 @@ def nx_to_pd(G, cols=None):
     return df
 
 def write_topology(dataset, top_dir, cols = None):
-    if cols == None:
-        top = dataset['to_node', 'from_node', 'capacity', 'prob_failure']
-    else:
+    top = dataset
+    if cols != None:
         top = dataset[cols]
     top.to_csv(os.path.join(top_dir, 'topology.txt'), index = False, sep=' ')

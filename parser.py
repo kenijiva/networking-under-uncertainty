@@ -4,7 +4,12 @@ import os
 def read_demand(topology_path, topology, demand_no):
     nodes = sorted(topology.nodes)
     flows = [(i,j) for i in nodes for j in nodes]
-    demand = np.loadtxt(os.path.join(topology_path, 'demand/demand_{:03d}.demand'.format(demand_no)))
-    demands = list(demand.flatten())
-    demands = [(i,j) for i,j in zip(flows, demands) if i[0] != i[1]]
-    return dict(demands)
+    files = sorted((os.listdir(f'{topology_path}/demand/{demand_no:03d}')))
+
+    demands = []
+    for f in files:
+        demand = np.loadtxt((f'{topology_path}/demand/{demand_no:03d}/{f}'))
+        demand = list(demand.flatten())
+        demand = dict([(i,j) for i,j in zip(flows, demand) if i[0] != i[1]])
+        demands.append(demand)
+    return demands

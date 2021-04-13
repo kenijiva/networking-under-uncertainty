@@ -37,7 +37,7 @@ def get_scenarios(flow2path, topology):
                     
                 all_smaller_cutoff = all_smaller_cutoff and max(probs) <=  10**(-5)
             all_probs = [prod([topology[src][tgt]['prob_failure'] for src,tgt in scen])*prod([1-topology[src][tgt]['prob_failure'] for src,tgt in all_edges-scen]) for scen in all_scens]
-            #all_smaller_cutoff = (sum(all_probs)) >= 0.999
+            all_smaller_cutoff = (sum(all_probs)) >= 0.999
 
         res.append((i,all_scens))
 
@@ -59,5 +59,6 @@ def get_flow_scenarios(topology, paths):
 
     probs = [sum([s[1] for s in j]) for i,j in feasible_scenarios]
     max_prob = min(probs) 
+    #print(max_prob)
 
     return feasible_scenarios
