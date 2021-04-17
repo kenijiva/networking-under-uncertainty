@@ -6,7 +6,7 @@ from configargparse import ArgumentParser
 def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
-        return s == 'True'
+    return s == 'True'
 
 
 def get_arguments():
