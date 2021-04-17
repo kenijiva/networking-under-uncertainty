@@ -3,13 +3,19 @@ import os
 import argparse
 from configargparse import ArgumentParser
 
+def boolean_string(s):
+    if s not in {'False', 'True'}:
+        raise ValueError('Not a valid boolean string')
+        return s == 'True'
+
+
 def get_arguments():
     parser = ArgumentParser('Argument Parser')
 
     parser.add('-c', '--config', is_config_file = True, help = 'Path to config file')
     parser.add('--path', type = str, default = '.', help = 'Path to experiment')
-    parser.add('--add_ducts', type = bool, default = True, help = 'Should new fiber ducts be constructed?')
-    parser.add('--time_heuristic_fwd', type = bool, default = True, help = 'True if forward greedy heuristic to use when iterating over time, false if backwards heuristic')
+    parser.add('--add_ducts', type = boolean_string, default = True, help = 'Should new fiber ducts be constructed?')
+    parser.add('--time_heuristic_fwd', type = boolean_string, default = True, help = 'True if forward greedy heuristic to use when iterating over time, false if backwards heuristic')
 
     # Cutoff argument
     parser.add('--cutoff', type = float, default = 1e-3, help = 'cutoff for scenario creation')
