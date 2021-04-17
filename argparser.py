@@ -8,6 +8,8 @@ def get_arguments():
 
     parser.add('-c', '--config', is_config_file = True, help = 'Path to config file')
     parser.add('--path', type = str, default = '.', help = 'Path to experiment')
+    parser.add('--add_ducts', type = bool, default = True, help = 'Should new fiber ducts be constructed?')
+    parser.add('--time_heuristic_fwd', type = bool, default = True, help = 'True if forward greedy heuristic to use when iterating over time, false if backwards heuristic')
 
     # Arguments for demand history
     parser.add('--demand_scale', type = float, default = 1., help = 'How should the stored demand be scaled. demand_scale * demand[demand_no] is the initial demand.')
@@ -15,13 +17,13 @@ def get_arguments():
     parser.add('--demand_no', type = int, default = 0, help = 'Demand file in TOPOLOGY\'s folder')
 
     # Topology arguments
-    parser.add('--topology', type = str, default = 'my_B4', help = 'Name of the topology that can be found in the topology folder')
+    parser.add('--topology', type = str, default = 'B4_000', help = 'Name of the topology that can be found in the topology folder')
 
     # SLA arguments
     parser.add('--alpha', type = float, default = 0.999, help = 'Minimum availability for each flow')
 
     # Path arguments
-    parser.add('--n_paths', type = int, default = 4, help = 'Number of paths per flow')
+    parser.add('--path_selection', type = str, default = 'KSP-4', help = 'Path selction algorithm. KSP-4 -> KSP max 4 path, PST-6 paths shorter than 6')
     
     # Cost relevant arguments
     parser.add('--wavelength_capacity', type = float, default = 400, help = 'Number of Gbps per wavelength')

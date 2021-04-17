@@ -97,8 +97,10 @@ def find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_ca
     prob.solve(solver)
 
     if prob.status == LpStatusOptimal:
+        #print(objective.value())
         return objective.value(), {k: capacity_update[k].value() for k in capacity_update}, {k: fiberduct_update[k].value() for k in fiberduct_update}
     else:
-        print('heeeeeeeeeeeee')
-        return 999999999999999999999999999999
+        #print('heeeeeeeeeeeee')
+        #print(float("inf"))
+        return float("inf"), None, None
         raise Exception('Not Implemented')

@@ -20,10 +20,10 @@ from scipy.stats import uniform
 from argparser import *
 
 def upgrade_capacity(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost, fiberduct_cost, path_selection,added_edges=[], cheapest=None, max_capacity_update=None, max_fiberduct_update=None):
-    if path_selection == 'k_shortest_paths':
-        paths = k_shortest_paths(topology, n_paths)
-    elif path_selection == 'shortest_paths':
-        paths = shortest_paths(topology, n_paths+2)
+    if path_selection == 'KSP':
+        paths = KSP(topology, n_paths)
+    elif path_selection == 'PST':
+        paths = PST(topology, n_paths)
         #alpha = 0.999
 
     #print('get scenarios')
@@ -39,10 +39,13 @@ def add_edges(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost, f
     def update_bars(reset = False):
         if reset: qbar.reset()
         num_combs[r] = len(new_tops)
-        max_r = int(cheapest / fiberduct_cost)
+        if cheapest == float("inf"):
+            max_r = len(possible_edges)
+        else:
+            max_r = int(cheapest / fiberduct_cost)
         qbar.total = num_combs[r]
         pbar.total = sum(num_combs[:max_r+1])
-        pbar.set_postfix({'improvement:': round(no_adding_cost/cheapest,2), 'cheapest:': int(cheapest), 'timestep': timestep})
+        pbar.set_postfix({'improvement:': round(no_adding_cost/cheapest,2), 'cheapest:': int(cheapest) if cheapest != float('inf') else float('inf'), 'timestep': timestep})
         qbar.set_postfix({f'#edges per comb': r})
         pbar.refresh()
         qbar.refresh()
@@ -216,24 +219,33 @@ for run in range(runs):
     gbps_cost = args.gbps_cost / args.transceiver_amortization_years
     fiberduct_cost = args.n_fibers_per_fiberduct * args.fiber_cost
 
-    path_selection = 'k_shortest_paths' # TODO
-   
+    path_sel = args.path_selection.split('-')
+    path_selection = path_sel[0]
+    n_paths = int(path_sel[1])
+    
+    upgrade_f = 'add_edges' if args.add_ducts else 'upgrade_capacity'
+
+    time_heuristic = iterative_upgrade if args.time_heuristic_fwd else backwards_iterative_upgrade
+
+    time_heuristic(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+
     # perform experiments #TODO add everywhere args.path
 
-    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'k_shortest_paths', args.path)
-    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'k_shortest_paths', args.path)
-    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths', args.path)
-    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths', args.path)
-    iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths', args.path)
-    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths')
-    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'k_shortest_paths')
-    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', 'shortest_paths')
-    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths')
-    #iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'shortest_paths')
-    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths')
-    #backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'shortest_paths')
-    ##iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'shortest_paths')
-    ##iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', 'k_shortest_paths')
-    ##backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'upgrade_capacity', path_selection)
-    ##iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', path_selection)
-    ##backwards_iterative_upgrade(args.alpha, topology, args.n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, 'add_edges', path_selection)
+    #iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+    #iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+    #iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection, args.path)
+    #iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    #iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    #iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    #backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    ##iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    ##iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    ##backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    ##iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
+    ##backwards_iterative_upgrade(args.alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, args.timesteps, upgrade_f, path_selection)
