@@ -27,7 +27,7 @@ def upgrade_capacity(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_
         #alpha = 0.999
 
     #print('get scenarios')
-    scenarios = get_flow_scenarios(topology, paths) # TODO reuse scenarios, not everly flow changes i think
+    scenarios = get_flow_scenarios(topology, paths) # TODO reuse scenarios, not everly flow changes i think # TODO no need to actually do for all paths: (1,2) == (2,1)
     #print(min([sum(sorted([p for _,p in scenarios[l][1]])) for l in range(len(scenarios))]))
     #print('calc sol')
     #print(alpha)

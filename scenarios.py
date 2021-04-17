@@ -46,7 +46,10 @@ def get_scenarios(flow2path, topology):
     return res
 
 def get_flow_scenarios(topology, paths):
+    # TODO flow 1 2 and 2 1 share 100% scenarios:
+    # TODO use only flows i < j. flow2path change edges direction s.t  s < t
     flows = get_flows(topology)
+    #flows = [(i,j) for i in topology.nodes for j in topology.nodes if i < j]
     flow2path = group_paths_by_flow(paths, flows)
 
     feasible_scenarios = get_scenarios(flow2path, topology)
@@ -57,8 +60,17 @@ def get_flow_scenarios(topology, paths):
         probs = [prod([topology[e[0]][e[1]]['prob_failure'] if e in s else 1-topology[e[0]][e[1]]['prob_failure'] for e in j_edges]) for s in j]
         feasible_scenarios[i] = (flow, list(zip([list(x) for x in j],probs)))
 
+    #for i, j in feasible_scenarios:
+    #    for k in j:
+    #        for el in k[0].copy():
+    #            if (el[1], el[0]) not in k[0]:
+    #                k[0].append((el[1], el[0]))
+
+    #for i,j in feasible_scenarios.copy():
+    #    feasible_scenarios.append(((i[1],i[0]),j))
+
     probs = [sum([s[1] for s in j]) for i,j in feasible_scenarios]
     max_prob = min(probs) 
-    #print(max_prob)
+    print(max_prob)
 
     return feasible_scenarios
