@@ -15,6 +15,7 @@ def find_capacity_update(alpha, topology, paths, demand, scenarios, fiberduct_ca
     flat_scenarios = [sorted(list(k)) for k in flat_scenarios]
     scenarios = sorted(scenarios)
     n_scenarios = len(flat_scenarios)
+    #print(n_scenarios)
 
     #############################################
     ##              LP VARIABLES               ##

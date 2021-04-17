@@ -11,6 +11,9 @@ def get_arguments():
     parser.add('--add_ducts', type = bool, default = True, help = 'Should new fiber ducts be constructed?')
     parser.add('--time_heuristic_fwd', type = bool, default = True, help = 'True if forward greedy heuristic to use when iterating over time, false if backwards heuristic')
 
+    # Cutoff argument
+    parser.add('--cutoff', type = float, default = 1e-3, help = 'cutoff for scenario creation')
+
     # Arguments for demand history
     parser.add('--demand_scale', type = float, default = 1., help = 'How should the stored demand be scaled. demand_scale * demand[demand_no] is the initial demand.')
     parser.add('--timesteps', type = int, default = 5, help = 'Number of timesteps to optimize for')

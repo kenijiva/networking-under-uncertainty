@@ -8,7 +8,7 @@ def group_paths_by_flow(paths, flows):
     n_paths=len(paths)
     return list(zip(flows, [[paths[p] for p in range(n_paths) if f[0]==paths[p][0][0] and f[1]==paths[p][-1][1]] for f in flows]))
 
-def create_scenarios(parent, all_edges, scens, paths, topology):
+def create_scenarios(parent, all_edges, scens, paths, topology, cutoff):
     if parent == []:
         idx = 0
     else:
@@ -18,9 +18,9 @@ def create_scenarios(parent, all_edges, scens, paths, topology):
     for e in all_edges[idx:]:
         scen = parent + [e]
 
-        prob = prod([topology[src][tgt]['prob_failure'] for src,tgt in scen]) * prod([1-topology[src][tgt]['prob_failure'] for src, tgt in set(scen)-set(all_edges)])
+        prob = prod([topology[src][tgt]['prob_failure'] for src,tgt in scen]) * prod([1-topology[src][tgt]['prob_failure'] for src, tgt in set(all_edges)-set(scen)])
 
-        if prob < 10**(-5):
+        if prob < cutoff:
             continue
 
         infeasible = True
@@ -31,10 +31,10 @@ def create_scenarios(parent, all_edges, scens, paths, topology):
                 break
 
         if not infeasible:
-            create_scenarios(parent + [e], all_edges, scens, paths, topology)
+            create_scenarios(parent + [e], all_edges, scens, paths, topology, cutoff)
             scens.append(parent+[e])
 
-def get_scenarios(flow2path, topology):
+def get_scenarios(flow2path, topology, cutoff):
     all_scens = []
     for i,j in flow2path:
         all_edges = list(set().union(*j))
@@ -42,24 +42,20 @@ def get_scenarios(flow2path, topology):
         all_edges = list(set([(min(e[0],e[1]), max(e[0],e[1])) for e in all_edges])) # use undirected for failures (1,2) indicates (1,2), (2,1)
 
         scens = [[]]
-        create_scenarios([], all_edges, scens, j, topology)
-        all_scens.append((i, scens))
+        create_scenarios([], all_edges, scens, j, topology, cutoff)
+
+        probs = [prod([topology[src][tgt]['prob_failure'] for src,tgt in scen]) * prod([1-topology[src][tgt]['prob_failure'] for src, tgt in set(all_edges)-set(scen)]) for scen in scens]
+
+        all_scens.append((i, list(zip(scens,probs))))
     return all_scens
         
 
-def get_flow_scenarios(topology, paths):
+def get_flow_scenarios(topology, paths, cutoff):
     flows = get_flows(topology)
     flows = [(i,j) for i in topology.nodes for j in topology.nodes if i < j]
     flow2path = group_paths_by_flow(paths, flows)
 
-    feasible_scenarios = get_scenarios(flow2path, topology)
-    for i in range(len(feasible_scenarios)):
-        flow = feasible_scenarios[i][0]
-        j = feasible_scenarios[i][1]
-        j_edges = set().union(*flow2path[i][1])
-        probs = [prod([topology[e[0]][e[1]]['prob_failure'] if e in s else 1-topology[e[0]][e[1]]['prob_failure'] for e in j_edges]) for s in j]
-        feasible_scenarios[i] = (flow, list(zip([list(x) for x in j],probs)))
-
+    feasible_scenarios = get_scenarios(flow2path, topology, cutoff)
     # make failure scenarios from bidirectional link to two unidirection links
     # (1,2) -> (1,2), (2,1)
     for i, j in feasible_scenarios:
