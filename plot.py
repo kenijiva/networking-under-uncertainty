@@ -44,12 +44,20 @@ def plot_edge_vs_link(paths, show, name):
                 sub_data = data[(data.time_h == row.time_h) & (data.upgrade_f == row.upgrade_f) & (data.path == row.path) & (data.t == row.t)]
                 #print(sub_data)
                 plot_data = sub_data.groupby('n_edges').min().reset_index()
+                x = 0
+                while  10**(x+1) < max(sub_data.cost):
+                    x+=1
+                ticks = [0] + [y*10**x for y in range(x)]
+                #print(ticks)
+
+
                 n_edges = max(max(plot_data.n_edges), n_edges)
                 plt.plot(plot_data.n_edges, plot_data.cost, colours[col_idx%len(colours)], marker=markers[col_idx%len(markers)])
+                plt.yticks(ticks)
                 col_idx = (col_idx + 1) 
-        plt.xticks(range(n_edges+1))
-        plt.xlim(left=0)
-        plt.ylim(bottom=0)
+        #plt.xticks(range(n_edges+1))
+        #plt.xlim(left=0)
+        #plt.ylim(bottom=0)
         #plt.tight_layout()
 
         if show:
@@ -65,6 +73,8 @@ def plot_cost_over_time(paths, which, show, name):
                 "text.usetex": True,
                 "font.family": "sans-serif",
                 "font.sans-serif": ["Helvetica"]})
+    #"xtick.minor.pad": '8',
+    #"ytick.minor.pad": '8'})
     markers = ["o", "^", "D"]
     colours = ["#03c03c","#f39a27","#976ed7","#c47a53","#579abe", "#eada52"]
     col_idx = 0
@@ -73,7 +83,7 @@ def plot_cost_over_time(paths, which, show, name):
     plt.xlabel('Time [years]', fontsize = 18)
     plt.ylabel('Cost [USD]', fontsize = 18)
     for path in paths:
-        data = pd.read_csv(os.path.join(path,'cost_history.txt'), delimiter=' ', names=['time_h', 'upgrade_f', 'path', 't', 'cost'], dtype={'time_h':str, 'upgrade_f':str, 'path':str, 't':int, 'cost':float})
+        data = pd.read_csv(os.path.join(path,'cost_history.txt'), delimiter=' ', names=['time_h', 'upgrade_f', 'path', 't', 'cost', 'cutoff'], dtype={'time_h':str, 'upgrade_f':str, 'path':str, 't':int, 'cost':float})
         #print(data)
         unique = data.groupby(['time_h','upgrade_f', 'path']).size().reset_index().rename(columns={0:'count'})[['time_h', 'upgrade_f', 'path']]
         for index, row in unique.iterrows():
@@ -86,14 +96,14 @@ def plot_cost_over_time(paths, which, show, name):
                 for i in range(len(cost)):
                     cost[i] = sum(cost[:i+1])
                 cost = [0] + cost
-                label = row.time_h + ' iteration with' + ('out ' if row.upgrade_f == 'upgrade_capacity' else ' ') + 'adding links' 
+                label = row.time_h + ' iteration with' + ('out ' if row.upgrade_f == 'upgrade_capacity' else ' ') + 'adding links ' + row.path 
                 plt.plot(time, cost, label = label, color = colours[col_idx%len(colours)], marker = markers[col_idx%len(markers)])
                 col_idx += 1
         #plt.legend(fontsize=12, facecolor='white')
         font = font_manager.FontProperties(family='sans-serif', style='normal', size=12)
         plt.legend(fontsize=12,facecolor = 'white')
-        plt.xlim(left=0)
-        plt.ylim(bottom=0)
+        #plt.xlim(left=0)
+        #plt.ylim(bottom=0)
         #plt.tight_layout()
         #plt.gca().set_axis_off()
         #plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 

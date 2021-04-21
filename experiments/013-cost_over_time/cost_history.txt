@@ -1,33 +1,33 @@
-forward upgrade_capacity KSP 0 182237727.51924366
-forward upgrade_capacity KSP 1 465605255.7890686
-forward upgrade_capacity KSP 2 742201355.7426574
-forward upgrade_capacity KSP 3 1530774638.0962284
-forward upgrade_capacity KSP 4 2526243682.202058
-backward upgrade_capacity KSP 4 2524100801.7837415
-backward upgrade_capacity KSP 3 1528631757.677912
-backward upgrade_capacity KSP 2 740058475.324341
-backward upgrade_capacity KSP 1 465605255.9240249
-backward upgrade_capacity KSP 0 182237727.6542
-forward upgrade_capacity PST 0 205829737.36863998
-forward upgrade_capacity PST 1 509904814.1591097
-forward upgrade_capacity PST 2 812276417.7975578
-forward upgrade_capacity PST 3 1646511673.681734
-forward upgrade_capacity PST 4 2728216285.7411594
-backward upgrade_capacity PST 4 2713483391.870436
-backward upgrade_capacity PST 3 1632868004.97564
-backward upgrade_capacity PST 2 812061054.5159438
-backward upgrade_capacity PST 1 509904814.1591097
-backward upgrade_capacity PST 0 205829737.36863998
-forward add_edges KSP 0 65798642.47917999
-forward add_edges KSP 1 197652676.17796603
-forward add_edges KSP 2 443881326.86339116
-forward add_edges KSP 3 1013336296.5136911
-forward add_edges KSP 4 1989294000.2986102
-backward add_edges KSP 4 1024939140.2944417
-backward add_edges KSP 3 572718361.5182985
-backward add_edges KSP 2 263865717.5314588
-backward add_edges KSP 1 152485327.59094408
-backward add_edges KSP 0 79037717.31155999
-forward add_edges PST 0 79037717.31156
-forward add_edges PST 1 251159321.94474903
-forward add_edges PST 2 559104027.6240584
+forward upgrade_capacity KSP 0 182237727.51924366 0.001
+forward upgrade_capacity KSP 1 465605255.7890686 0.001
+forward upgrade_capacity KSP 2 742201355.7426574 0.001
+forward upgrade_capacity KSP 3 1530774638.0962284 0.001
+forward upgrade_capacity KSP 4 2526243682.202058 0.001
+backward upgrade_capacity KSP 4 2524100801.7837415 0.001
+backward upgrade_capacity KSP 3 1528631757.677912 0.001
+backward upgrade_capacity KSP 2 740058475.324341 0.001
+backward upgrade_capacity KSP 1 465605255.9240249 0.001
+backward upgrade_capacity KSP 0 182237727.6542 0.001
+forward upgrade_capacity PST 0 205829737.36863998 0.001
+forward upgrade_capacity PST 1 509904814.1591097 0.001
+forward upgrade_capacity PST 2 812276417.7975578 0.001
+forward upgrade_capacity PST 3 1646511673.681734 0.001
+forward upgrade_capacity PST 4 2728216285.7411594 0.001
+backward upgrade_capacity PST 4 2713483391.870436 0.001
+backward upgrade_capacity PST 3 1632868004.97564 0.001
+backward upgrade_capacity PST 2 812061054.5159438 0.001
+backward upgrade_capacity PST 1 509904814.1591097 0.001
+backward upgrade_capacity PST 0 205829737.36863998 0.001
+forward add_edges KSP 0 65798642.47917999 0.001
+forward add_edges KSP 1 197652676.17796603 0.001
+forward add_edges KSP 2 443881326.86339116 0.001
+forward add_edges KSP 3 1013336296.5136911 0.001
+forward add_edges KSP 4 1989294000.2986102 0.001
+backward add_edges KSP 4 1024939140.2944417 0.001
+backward add_edges KSP 3 572718361.5182985 0.001
+backward add_edges KSP 2 263865717.5314588 0.001
+backward add_edges KSP 1 152485327.59094408 0.001
+backward add_edges KSP 0 79037717.31155999 0.001
+forward add_edges PST 0 79037717.31156 0.001
+forward add_edges PST 1 251159321.94474903 0.001
+forward add_edges PST 2 559104027.6240584 0.001

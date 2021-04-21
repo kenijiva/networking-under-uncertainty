@@ -19,5 +19,8 @@ paths = ['experiments/014-cost_over_time']
 which = ['forward upgrade_capacity KSP','backward upgrade_capacity KSP', 'forward add_edges KSP','backward add_edges KSP']
 which = ['forward upgrade_capacity KSP', 'forward add_edges KSP','backward add_edges KSP']
 plot_cost_over_time(paths, which, show, 'cost_over_time.pdf')
+
+which = ['forward upgrade_capacity KSP', 'backward upgrade_capacity KSP', 'forward add_edges KSP','backward add_edges KSP','forward upgrade_capacity PST', 'backward upgrade_capacity PST', 'forward add_edges PST','backward add_edges PST']
+#plot_cost_over_time(paths, which, show, 'path_comparison.pdf')
 #plot_cost_over_time(paths, which, show, 'cost_over_time.svg')
 #plot_cost_over_time(paths, None, show, 'cost_over_time.pdf')
