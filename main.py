@@ -124,7 +124,7 @@ def add_edges(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost, f
     return cheapest, cheapest_edges, cheapest_capacity_update, cheapest_fiberduct_update
 
 def backwards_iterative_upgrade(alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, timesteps, upgrade_f, path_selection, experiment_path, cutoff):
-    doc_str = f'backward {upgrade_f} {path_selection}'
+    doc_str = f'backward {upgrade_f} {path_selection}-{n_paths}'
     # copy values if using for other experiments
     G = topology.copy()
     possible_edges = {k: possible_edges[k] for k in possible_edges}
@@ -152,7 +152,7 @@ def backwards_iterative_upgrade(alpha, topology, n_paths, demands, fiberduct_cap
         possible_edges = {e: possible_edges[e] for e in edges} # constraint to minimize TODO CHECK HERE
 
 def iterative_upgrade(alpha, topology, n_paths, demands, fiberduct_capacity, gbps_cost, fiberduct_cost, possible_edges, timesteps, upgrade_f, path_selection, experiment_path, cutoff):
-    doc_str = f'forward {upgrade_f} {path_selection}'
+    doc_str = f'forward {upgrade_f} {path_selection}-{n_paths}'
     # copy values if using for other experiments
     G = topology.copy()
     possible_edges = {k: possible_edges[k] for k in possible_edges}
