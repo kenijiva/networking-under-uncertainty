@@ -1,6 +1,8 @@
 #for f in experiments/*/*.cfg
 FILES="
-experiments/016-cost_over_time_ksp4_forward_add_t5_NO_CUTOFF/config.cfg"
+experiments/016-cost_over_time_ksp4_forward_add_t5_0.001_cutoff/config.cfg"
+#experiments/016-cost_over_time_ksp4_forward_add_t5_NO_CUTOFF/config.cfg"
+
 for f in $FILES
 do
 	echo $f

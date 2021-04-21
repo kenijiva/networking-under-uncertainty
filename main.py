@@ -175,7 +175,7 @@ def iterative_upgrade(alpha, topology, n_paths, demands, fiberduct_capacity, gbp
 
         with open(os.path.join(experiment_path, 'cost_history.txt'), 'a') as f:
             #f.write(f'forward {upgrade_f} {path_selection} {t} {year_cost}\n')
-            f.write(f'{doc_str} {t} {year_cost}\n')
+            f.write(f'{doc_str} {t} {year_cost} {cutoff}\n')
         #print('\n\nTOTAL COST AND COST\nFIND HERE\n\n',total_cost,costs)
 
         # modify topology for next iteration

@@ -30,5 +30,3 @@ backward add_edges KSP 3 643623132.845166
 backward add_edges KSP 2 284636835.22973734
 backward add_edges KSP 1 171553088.56144065
 backward add_edges KSP 0 87156354.62161998
-forward add_edges PST 0 68388792.37599999
-forward add_edges PST 1 261354992.84164706
