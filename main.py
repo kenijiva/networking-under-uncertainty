@@ -47,8 +47,8 @@ def upgrade_capacity(alpha, topology, n_paths, demand, fiberduct_capacity,
     # Call MILP, get return values
     cost, capacity_update, fiberduct_update = find_capacity_update(
             alpha, topology, paths, demand, scenarios, fiberduct_capacity, gbps_cost,
-            fiberduct_cost, added_edges=added_edges, cheapest=cheapest,
-            max_capacity_update=max_capacity_update, max_fiberduct_update=max_fiberduct_update)
+            fiberduct_cost, added_edges=added_edges, max_capacity_update=max_capacity_update,
+            max_fiberduct_update=max_fiberduct_update)
 
     return cost, capacity_update, fiberduct_update
 
@@ -99,7 +99,8 @@ def add_edges(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost,
     cheapest_edges = []
 
     # Write result
-    with open(os.path.join(experiment_path, 'topology_evaluations.txt'), 'a') as f:
+    f_name = 'topology_evaluations.txt'
+    with open(os.path.join(experiment_path, f_name), 'a') as f:
         f.write(f'{doc_str} {cheapest} {cheapest_edges}\n')
 
     # Find cheaper topology
@@ -146,7 +147,6 @@ def add_edges(alpha, topology, n_paths, demand, fiberduct_capacity, gbps_cost,
             succ_tops.append((es, total_cost))
             # Write result
 
-            f_name = 'topology_evaluations.txt'
             with open(os.path.join(experiment_path, f_name), 'a') as f:
                 f.write(f'{doc_str} {total_cost} {es}\n')
 
