@@ -3,6 +3,10 @@ import os
 import argparse
 from configargparse import ArgumentParser
 
+"""
+This file contains the argument parser for this project.
+"""
+
 def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
