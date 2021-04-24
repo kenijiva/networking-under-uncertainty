@@ -294,7 +294,7 @@ except:
 write_config_file(args, path= os.path.join(args.path, 'config.cfg'))
 
 topology_path = 'topology/' + args.topology
-topology_df = read_topology(topology_path,None,None)
+topology_df = read_topology(topology_path)
 topology = pd_to_nx(topology_df[topology_df.num_fiberducts > 0])
 
 possible_edges = topology_df[topology_df.num_fiberducts == 0]
