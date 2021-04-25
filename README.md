@@ -1,4 +1,4 @@
-# CleanRoad: Road Segmentation of Aerial Images by Fusing Modern and Traditional Methods
+# Network Design Under Uncertainty
 
 <!---<div align="center">
 <img src="plots/comparisons/comparison_overview.png" alt="Overview" width="90%"/>
